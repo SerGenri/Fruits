@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="7.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
+    <PackageReference Include="System.DirectoryServices" Version="7.0.1" />
+    <PackageReference Include="System.DirectoryServices.AccountManagement" Version="7.0.0" />
+    <PackageReference Include="System.Management" Version="7.0.1" />
+    <PackageReference Include="System.ServiceModel.Duplex" Version="4.10.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fruits.DAL\Fruits.DAL.csproj" />
+    <ProjectReference Include="..\Fruits.Domain\Fruits.Domain.csproj" />
+    <ProjectReference Include="..\Fruits.Interfaces\Fruits.Interfaces.csproj" />
+  </ItemGroup>
+
+</Project>

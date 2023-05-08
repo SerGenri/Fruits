@@ -1,0 +1,29 @@
+﻿@using Fruits.Interfaces
+@inject IMyIpService MyIpService
+
+<AuthorizeView>
+	<Authorized>
+		<div class="me-2 text-white d-flex align-items-center">
+			<div class="d-flex flex-column">
+				<span>Привет,</span>
+				<span>@context.User.Identity?.Name</span>
+				<span>@Ip</span>
+			</div>
+		</div>
+	</Authorized>
+</AuthorizeView>
+
+@code
+{
+	private string? Ip { get; set; }
+
+	protected override void OnAfterRender(bool firstRender)
+	{
+		if (firstRender)
+		{
+			var ip = MyIpService.GetIp();
+			Ip = ip != null ? $" ({ip})" : null;
+		}
+	}
+
+}

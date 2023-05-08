@@ -1,0 +1,24 @@
+﻿
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+	<div id="idToastError" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+		<div class="toast-header">
+			<i class="rounded me-2 bi bi-chat-left-text-fill" style="color: crimson"></i>
+
+			<strong class="me-auto" style="color: crimson">Ошибка!</strong>
+			<small>@(DateTime.Now)</small>
+			<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Закрыть"></button>
+		</div>
+		<div class="toast-body">
+			<h6>@ErrorMessage</h6>
+		</div>
+	</div>
+</div>
+
+@code {
+	public string? ErrorMessage { get; set; }
+
+	public async Task RefreshMe()
+	{
+		await InvokeAsync(StateHasChanged);
+	}
+}

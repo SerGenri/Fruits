@@ -1,0 +1,127 @@
+﻿@page "/Report"
+@using Fruits.Interfaces
+@using Microsoft.AspNetCore.Components
+@using Fruits.Domain.Report
+@inject IReportServices ReportServices
+
+<PageTitle>Отчет</PageTitle>
+<h4 class="mb-0 ms-2">Отчет</h4>
+
+<hr />
+
+@if (ModelReport != null)
+{
+	<EditForm Model="ModelReport" OnValidSubmit="EditFormValid">
+		<DataAnnotationsValidator />
+		<ValidationSummary />
+	
+		<div class="d-flex justify-content-start ms-2">
+			<div class="me-2">
+				<label for="validation_StartDate" class="form-label m-0 ms-2">Дата От</label>
+				<input id="validation_StartDate" type="date" class="form-control col" @bind="ModelReport.StartDate">
+			</div>
+
+			<div class="me-2">
+				<label for="validation_EndDate" class="form-label m-0 ms-2">Дата До</label>
+				<input id="validation_EndDate" type="date" class="form-control col" @bind="ModelReport.EndDate">
+			</div>
+
+			<div class="d-flex align-items-center">
+				<button type="submit" class="btn btn-secondary ms-2 d-flex align-items-center">Выгрузить</button>
+			</div>
+		</div>
+	</EditForm>
+}
+
+<hr />
+
+<table class="table">
+	<thead>
+		<tr>
+			<th></th>
+			<th>Фрукт</th>
+			<th>Вес, Кг</th>
+			<th>Стоимость</th>
+		</tr>
+	</thead>
+	<tbody>
+		@if (ListReport != null && ListReport.Any())
+		{
+			foreach (var group in ListReport)
+			{
+				<tr class="table-warning">
+					<td colspan="4">
+						<span class ="text-black-50">Поставщик</span>
+						<span class="fw-bold">@group.Key</span>
+						<span class="text-black-50">(количество: @group.Count())</span>
+					</td>
+				</tr>
+				foreach (var item in group)
+				{
+					<tr>
+						<td></td>
+						<td>@item.NameFruit</td>
+						<td>@item.MassSumm</td>
+						<td>@item.PriceSumm.ToString("C")</td>
+					</tr>
+				}
+			}
+		}
+	</tbody>
+</table>
+
+@if (ListReport == null)
+{
+	<div class="mt-3 mb-3 d-flex justify-content-center align-items-center">
+		<strong>Загрузка...</strong>
+		<div class="spinner-border ms-2" role="status" aria-hidden="true"></div>
+	</div>
+}
+
+@code {
+	private IEnumerable<IGrouping<string?, Report>>? ListReport { get; set; }
+	private ModelReport? ModelReport { get; set; }
+
+	protected override void OnInitialized()
+	{
+		ModelReport = new ModelReport();
+		ModelReport.StartDate = DateTime.Now.Date.AddYears(-1);
+		ModelReport.EndDate = DateTime.Now.Date.AddYears(1);
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			await GetReportData();
+		}
+	}
+
+	private async Task RefreshMe()
+	{
+		await InvokeAsync(StateHasChanged);
+	}
+
+	private async Task EditFormValid()
+	{
+		await GetReportData();
+	}
+
+	#region Get
+	private async Task GetReportData()
+	{
+		if (ModelReport != null)
+		{
+			var start = ModelReport.StartDate;
+			var end = ModelReport.EndDate;
+
+			var allReport = await ReportServices.GetReportAsync(start, end);
+	
+			ListReport = allReport.ToList().GroupBy(x => x.NameProvider);
+		}
+
+		await RefreshMe();
+	}
+	#endregion
+
+}

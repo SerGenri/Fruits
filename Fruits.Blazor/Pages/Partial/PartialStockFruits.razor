@@ -1,0 +1,307 @@
+﻿@using Fruits.Domain.DB
+@using Fruits.Interfaces
+@using Fruits.Services
+@using System.ComponentModel
+@inject IFriutServices FriutServices
+@inject IJSRuntime Js;
+
+@*модальное окно добавить удалить*@
+<div class="modal fade" id="modalStockFruits" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+
+			<div class="modal-header">
+				<h5 class="modal-title h4">@_formaTitle</h5>
+				<button type="button" class="btn btn-close" keydata-bs-dismiss="modal" aria-label="Close"
+						@onclick="CloseStockFruitsFormaCancelEdit"></button>
+			</div>
+
+			@if (StockFruitsSelect is not null)
+			{
+				<div class="modal-body">
+					<EditForm id="idEditFormStockFruits" Model="StockFruitsSelect" OnValidSubmit="EditFormValid">
+						<DataAnnotationsValidator />
+						<ValidationSummary />
+						
+						<div class="d-flex justify-content-between">
+							<div class="me-2">
+								<label for="validation_stockFruitsSelect_Mass" class="form-label m-0 ms-2">Вес, кг</label>
+								<input id="validation_stockFruitsSelect_Mass" type="text" class="form-control col" @bind="StockFruitsSelect.Mass">
+							</div>
+
+							<div>
+								<label for="validation_stockFruitsSelect_Price" class="form-label m-0 ms-2">
+									<span>Цена, зам кг</span>
+									@if (StockFruitsSelect.PriceCatalogLbl)
+									{
+										<span class="text-danger ms-1">(из справочника)</span>
+									}
+								</label>
+
+								<input id="validation_stockFruitsSelect_Price" type="text" class="form-control col"
+								   @bind="StockFruitsSelect.Price" disabled="@(StockFruitsSelect.PriceCatalogLbl ? true : null)">
+							</div>
+						</div>
+
+						<div class="mb-2">
+							<label for="validation_stockFruitsSelect_IdFruitsCatalog" class="form-label m-0 ms-2">Фрукт</label>
+							<select id="validation_stockFruitsSelect_IdFruitsCatalog" class="form-select" @bind="StockFruitsSelect.IdFruitsCatalog">
+								@if (ListFruitsCatalog != null)
+								{
+									foreach (var status in ListFruitsCatalog)
+									{
+										<option value="@status.IdFruitsCatalog">@status.FullName</option>
+									}
+								}
+							</select>
+						</div>
+
+					</EditForm>
+				</div>
+			}
+
+			<div class="modal-footer">
+
+				@if (_btnUpdateHide)
+				{
+					<button type="submit" form="idEditFormStockFruits" class="btn btn-primary">Сохранить</button>
+				}
+				@if (_btnAddHide)
+				{
+					<button type="submit" form="idEditFormStockFruits" class="btn btn-success">Добавить</button>
+				}
+				@if (_btnDeleteHide)
+				{
+					<button type="button" class="btn btn-danger" data-bs-dismiss="modal" @onclick="DeleteStockFruitsToDb">Удалить</button>
+				}
+
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="CloseStockFruitsFormaCancelEdit">Закрыть</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<h4 class="mb-0 ms-2">Комплект поставки</h4>
+
+<table class="table">
+	<thead>
+	<tr>
+		<th>
+			<div class="d-flex justify-content-center">
+				@if (Stock != null && Stock.IdStock > 0)
+				{
+					<a @onclick="AddStockFruitsOpenForma" style="cursor: pointer"
+					   data-bs-toggle="modal" data-bs-target="#modalStockFruits">
+						<span class="badge bg-warning">Добавить</span>
+					</a>
+				}
+			</div>
+		</th>
+		<th>Фрукт</th>
+		<th>Вес, кг</th>
+		<th>Цена, за Кг</th>
+	</tr>
+	</thead>
+	<tbody>
+	@if (ListStockFruits != null && ListStockFruits.Any())
+	{
+		foreach (var item in ListStockFruits)
+		{
+			<tr>
+				<td class="col-1">
+					<div class="d-flex justify-content-center">
+						<button @onclick="() => EditStockFruitsOpenForma(item)" class="btn btn-sm btn-outline-success p-0 px-1"
+						        data-bs-toggle="modal" data-bs-target="#modalStockFruits" type="button">
+							<span>Правка</span>
+						</button>
+					</div>
+				</td>
+				<td>@item.FullName</td>
+				<td>@item.Mass</td>
+				<td>
+					@item.Price.ToString("C")
+					@if (item.PriceCatalogLbl)
+					{
+						<span class="text-danger">(из справочника)</span>
+					}
+				</td>
+			</tr>
+		}
+	}
+	else
+	{
+		<tr>
+			<td colspan="4">
+				<h5 class="my-2 text-center">Выберите поставку!</h5>
+			</td>
+		</tr>
+	}
+	</tbody>
+</table>
+
+@code {
+	[Parameter]
+	public EventCallback EventCallbackDataChange { get; set; }
+
+	private List<StockFruits>? ListStockFruits { get; set; }
+	private Stock? Stock { get; set; }
+
+	private async Task RefreshMe()
+	{
+		await InvokeAsync(StateHasChanged);
+	}
+
+	#region Get
+	public async Task GetStockFruitsData(Stock? value)
+	{
+		Stock = value;
+
+		var allFruitsCatalog = await FriutServices.GetAllFruitsCatalog();
+		ListFruitsCatalog = allFruitsCatalog.ToList();
+
+		if (value == null)
+		{
+			ListStockFruits = null;
+		}
+		else
+		{
+			ListStockFruits = value.ListStockFruits.ToList()
+				.OrderBy(x => x.Fruit?.Class)
+				.ThenBy(x => x.Fruit?.Sort)
+				.ThenBy(x => x.Mass)
+				.ThenBy(x => x.Price)
+				.ToList();
+		}
+
+		await RefreshMe();
+	}
+	#endregion
+
+	#region Edit-Add
+	private List<FruitsCatalog>? ListFruitsCatalog { get; set; }
+
+	private string? _formaTitle;
+	private bool _btnDeleteHide = true;
+	private bool _btnAddHide = true;
+	private bool _btnUpdateHide = true;
+
+	private StockFruits? _stockFruitsSelect;
+	private StockFruits? StockFruitsSelect
+	{
+		get => _stockFruitsSelect;
+		set
+		{
+			_stockFruitsSelect = value;
+
+			if (_stockFruitsSelect != null)
+			{
+				_stockFruitsSelect.PropertyChanged += StockFruitsSelectOnPropertyChanged;
+			}
+		}
+	}
+
+	private async void StockFruitsSelectOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+	{
+		if (e.PropertyName == nameof(StockFruits.IdFruitsCatalog))
+		{
+			if (StockFruitsSelect != null)
+			{
+				StockFruitsSelect.Fruit = ListFruitsCatalog?.First(x => x.IdFruitsCatalog == StockFruitsSelect.IdFruitsCatalog);
+			}
+
+			await RefreshMe();
+		}
+	}
+
+	private void AddStockFruitsOpenForma()
+	{
+		if (Stock == null)
+		{
+			return;
+		}
+
+		StockFruitsSelect = new StockFruits();
+		StockFruitsSelect.Stock = Stock;
+
+		_btnAddHide = true;
+		_btnDeleteHide = false;
+		_btnUpdateHide = false;
+		_formaTitle = "Добавить новый фрукт";
+	}
+
+	private void EditStockFruitsOpenForma(StockFruits stock)
+	{
+		_btnAddHide = false;
+		_btnDeleteHide = true;
+		_btnUpdateHide = true;
+		_formaTitle = "Карточка фрукта";
+
+		StockFruitsSelect = stock;
+	}
+
+	private async Task CloseStockFruitsFormaCancelEdit()
+	{
+		await Js.InvokeVoidAsync("closeModal", "modalStockFruits");
+	
+		// Возвращаем без сохранения
+		if (StockFruitsSelect != null)
+		{
+			await FriutServices.UndoChangesItemAsync(StockFruitsSelect);
+		}
+
+		await GetStockFruitsData(Stock);
+	}
+
+	private async Task EditFormValid()
+	{
+		if (!_btnUpdateHide)
+		{
+			await AddStockFruitsToDb();
+		}
+		if (!_btnAddHide)
+		{
+			await UpdateStockFruitsToDb();
+		}
+
+		await Js.InvokeVoidAsync("closeModal", "modalStockFruits");
+	}
+
+	private async Task AddStockFruitsToDb()
+	{
+		if (StockFruitsSelect != null)
+		{
+			await FriutServices.AddStockFruitsAsync(StockFruitsSelect);
+			if (await FriutServices.SaveChangesAsync())
+			{
+				await EventCallbackDataChange.InvokeAsync();
+			}
+		}
+	}
+
+	private async Task DeleteStockFruitsToDb()
+	{
+		if (StockFruitsSelect != null)
+		{
+			await FriutServices.RemoveStockFruitsAsync(StockFruitsSelect);
+			if (await FriutServices.SaveChangesAsync())
+			{
+				await EventCallbackDataChange.InvokeAsync();
+			}
+		}
+	}
+
+	private async Task UpdateStockFruitsToDb()
+	{
+		if (StockFruitsSelect != null)
+		{
+			FriutServices.UpdateStockFruits(StockFruitsSelect);
+			if (await FriutServices.SaveChangesAsync())
+			{
+				await EventCallbackDataChange.InvokeAsync();
+			}
+		}
+	}
+	#endregion
+
+
+}

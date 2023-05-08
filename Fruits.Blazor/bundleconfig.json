@@ -1,0 +1,20 @@
+﻿[
+  {
+    "inputFiles": [
+      "Styles/site.css"
+    ],
+    "outputFileName": "wwwroot/css/site.css"
+  },
+  {
+    "inputFiles": [
+      "Scripts/myJava.js"
+    ],
+    "outputFileName": "wwwroot/js/myJava.js"
+  },
+  {
+    "inputFiles": [
+      "Scripts/current-device.min.js"
+    ],
+    "outputFileName": "wwwroot/js/current-device.min.js"
+  }
+]

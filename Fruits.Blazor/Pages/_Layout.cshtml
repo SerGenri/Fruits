@@ -1,0 +1,52 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+@namespace Fruits.Blazor.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>База Фрукты</title>
+
+    <base href="~/" />
+    <link href="~/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
+	<link href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="~/lib/font-awesome/css/all.min.css" rel="stylesheet">
+    <link href="~/css/site.css" rel="stylesheet" />
+	<link href="~/Fruits.Blazor.styles.css" rel="stylesheet" />
+    <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
+</head>
+<body>
+    @RenderBody()
+
+<div id="blazor-error-ui">
+	<environment include="Staging,Production">
+		Произошла ошибка. Это приложение может больше не отвечать до перезагрузки.
+	</environment>
+	<environment include="Development">
+		Произошло необработанное исключение. Дополнительные сведения см. в инструментах разработки браузера.
+	</environment>
+	<a href="" class="reload">Перезагрузить</a>
+	<a class="dismiss">🗙</a>
+</div>
+	<script src="~/lib/jquery/jquery.min.js"></script>
+	<script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+	<script src="~/_framework/blazor.server.js"></script>
+	<script src="~/js/myJava.min.js"></script>
+	<script src="~/_framework/aspnetcore-browser-refresh.js"></script>
+
+<!-- This is the glue between the C# code and the ChartJs charts -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+	<script src="_content/ChartJs.Blazor.Fork/ChartJsBlazorInterop.js"></script>
+
+	<script src="~/js/current-device.min.js"></script>
+	
+	<partial name="_ValidationScriptsPartial" />
+
+	@section Scripts {
+		@await RenderSectionAsync("Scripts", required: false)
+	}
+</body>
+</html>

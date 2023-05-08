@@ -1,0 +1,193 @@
+﻿@page "/FruitsCatalog"
+@using Fruits.Interfaces
+@using Fruits.Domain.DB
+@inject IFriutServices FriutServices
+@inject IJSRuntime Js;
+
+<PageTitle>Фрукты</PageTitle>
+<h4 class="mb-0 ms-2">Фрукты</h4>
+
+<hr />
+
+@if (FruitsSelect != null)
+{
+
+	<EditForm id="idEditFormFruits"  Model="FruitsSelect" OnValidSubmit="EditFormValid">
+		<DataAnnotationsValidator />
+		<ValidationSummary />
+
+		<div class="d-flex">
+			<div class="me-3 flex-fill">
+				<label for="validation_FruitsSelect_Class" class="form-label m-0 ms-2">Вид</label>
+				<input id="validation_FruitsSelect_Class" type="text" class="form-control"
+				       @bind="FruitsSelect!.Class">
+			</div>
+
+			<div class="me-3 flex-fill">
+				<label for="validation_FruitsSelect_Sort" class="form-label m-0 ms-2">Сорт</label>
+				<input id="validation_FruitsSelect_Sort" type="text" class="form-control"
+				       @bind="FruitsSelect!.Sort">
+			</div>
+
+			<div class="d-flex align-items-center">
+				<button type="submit" form="idEditFormFruits" class="btn btn-primary">Сохранить</button>
+				<button type="button" class="btn btn-danger ms-2" @onclick="DeleteFruitsToDb">Удалить</button>
+				<button type="button" class="btn btn-secondary ms-2" @onclick="CloseFruitsFormaCancelEdit">Отмена</button>
+			</div>
+		</div>
+	</EditForm>
+
+}
+else
+{
+	<h5 class="mb-0 ms-2">Выберите сроку для редактирования!</h5>
+}
+
+<hr />
+
+<button class="btn btn-success" @onclick="AddFruitsToDb" disabled="@(FruitsSelect != null ? true : null)">Добавить</button>
+
+<table class="table @(FruitsSelect == null ? "table-hover" : null)">
+	<thead>
+	<tr>
+		<th>Вид</th>
+		<th>Сорт</th>
+	</tr>
+	</thead>
+	<tbody>
+	@if (ListFruitsCatalog != null && ListFruitsCatalog.Any())
+	{
+		foreach (var item in ListFruitsCatalog)
+		{
+			<tr class="@(FruitsSelect == item ? "table-secondary" : null)" @onclick="() => EditFruitsOpenForma(item)" 
+			    style="@(FruitsSelect == null ? "cursor: pointer" : null)">
+				<td>@item.Class</td>
+				<td>@item.Sort</td>
+			</tr>
+		}
+	}
+	</tbody>
+</table>
+
+@if (ListFruitsCatalog == null)
+{
+	<div class="mt-3 mb-3 d-flex justify-content-center align-items-center">
+		<strong>Загрузка...</strong>
+		<div class="spinner-border ms-2" role="status" aria-hidden="true"></div>
+	</div>
+}
+
+<PartialError @ref="_refPartialError" />
+
+@code {
+	private PartialError? _refPartialError;
+
+	private List<FruitsCatalog>? ListFruitsCatalog { get; set; }
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			await GetFruitsData();
+		}
+	}
+
+	private async Task RefreshMe()
+	{
+		await InvokeAsync(StateHasChanged);
+	}
+
+	#region Get
+	private async Task GetFruitsData()
+	{
+		var allFruitsCatalog = await FriutServices.GetAllFruitsCatalog();
+
+		ListFruitsCatalog = allFruitsCatalog.ToList();
+
+		await RefreshMe();
+	}
+	#endregion
+
+
+	#region Edit-Add
+
+	private FruitsCatalog? FruitsSelect { get; set; }
+
+	private async Task EditFormValid()
+	{
+		await UpdateFruitsToDb();
+	}
+
+	private void EditFruitsOpenForma(FruitsCatalog fruits)
+	{
+		if (FruitsSelect != null)
+		{
+			return;
+		}
+
+		FruitsSelect = fruits;
+	}
+
+	private async Task CloseFruitsFormaCancelEdit()
+	{
+		// Возвращаем без сохранения
+		if (FruitsSelect != null)
+		{
+			await FriutServices.UndoChangesItemAsync(FruitsSelect);
+		}
+
+		FruitsSelect = null;
+
+		await GetFruitsData();
+	}
+
+	private async Task AddFruitsToDb()
+	{
+		FruitsSelect = new FruitsCatalog();
+		FruitsSelect.Class = "Введите вид Фрукта!";
+		FruitsSelect.Sort = "Введите сорт Фрукта!";
+
+		await FriutServices.AddFruitsCatalogAsync(FruitsSelect);
+		if (await FriutServices.SaveChangesAsync())
+		{
+			await GetFruitsData();
+		}
+	}
+
+	private async Task DeleteFruitsToDb()
+	{
+		if (FruitsSelect != null)
+		{
+			var result = await FriutServices.RemoveFruitsCatalogAsync(FruitsSelect);
+
+			if (_refPartialError != null && result.Result == false)
+			{
+				_refPartialError.ErrorMessage = result.ErrorMessage;
+				await Js.InvokeVoidAsync("ToastShow", "idToastError");
+				await _refPartialError.RefreshMe();
+			}
+			else
+			{
+				if (await FriutServices.SaveChangesAsync())
+				{
+					FruitsSelect = null;
+					await GetFruitsData();
+				}
+			}
+		}
+	}
+
+	private async Task UpdateFruitsToDb()
+	{
+		if (FruitsSelect != null)
+		{
+			if (await FriutServices.SaveChangesAsync())
+			{
+				FruitsSelect = null;
+				await GetFruitsData();
+			}
+		}
+	}
+	#endregion
+
+}

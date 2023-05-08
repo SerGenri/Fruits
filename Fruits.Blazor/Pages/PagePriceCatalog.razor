@@ -1,0 +1,267 @@
+﻿@page "/PriceCatalog"
+@using Fruits.Interfaces
+@using Fruits.Domain.DB
+@using System.ComponentModel
+@inject IFriutServices FriutServices
+
+<PageTitle>График поставок</PageTitle>
+<h4 class="mb-0 ms-2">График поставок</h4>
+
+<hr />
+
+@if (PriceSelect != null)
+{
+	<EditForm id="idEditFormPrice" Model="PriceSelect" OnValidSubmit="EditFormValid">
+		<DataAnnotationsValidator />
+		<ValidationSummary />
+
+		<div class="d-flex">
+			<div class="flex-fill">
+				<div class="d-flex">
+
+					<div class="me-2">
+						<label for="validation_PriceSelect_StartDate" class="form-label m-0 ms-2">Период С</label>
+						<input id="validation_PriceSelect_StartDate" type="date" class="form-control col" @bind="PriceSelect.StartDate">
+					</div>
+
+					<div class="me-2">
+						<label for="validation_PriceSelect_EndDate" class="form-label m-0 ms-2">Период По</label>
+						<input id="validation_PriceSelect_EndDate" type="date" class="form-control col" @bind="PriceSelect.EndDate">
+					</div>
+
+					<div class="me-2 flex-fill">
+						<label for="validation_PriceSelect_Price" class="form-label m-0 ms-2">Цена</label>
+						<input id="validation_PriceSelect_Price" type="text" class="form-control" @bind="PriceSelect.Price">
+					</div>
+
+				</div>
+
+				<div class="d-flex">
+					<div class="me-2 flex-fill">
+						<label for="validation_PriceSelect_IdProviderCatalog" class="form-label m-0 ms-2">Поставщик</label>
+						<select id="validation_PriceSelect_IdProviderCatalog" class="form-select" @bind="PriceSelect.IdProviderCatalog">
+							@if (ListProvidersCatalog != null)
+							{
+								foreach (var status in ListProvidersCatalog)
+								{
+									<option value="@status.IdProviderCatalog">@status.NameProvider</option>
+								}
+							}
+						</select>
+					</div>
+
+					<div class="me-2 flex-fill">
+						<label for="validation_PriceSelect_IdFruitsCatalog" class="form-label m-0 ms-2">Фрукт</label>
+						<select id="validation_PriceSelect_IdFruitsCatalog" class="form-select" @bind="PriceSelect.IdFruitsCatalog">
+							@if (ListFruitsCatalog != null)
+							{
+								foreach (var status in ListFruitsCatalog)
+								{
+									<option value="@status.IdFruitsCatalog">@status.FullName</option>
+								}
+							}
+						</select>
+					</div>
+				</div>
+			</div>
+
+			<div class="d-flex align-items-center">
+				<button type="submit" form="idEditFormPrice" class="btn btn-primary">Сохранить</button>
+				<button type="button" class="btn btn-danger ms-2" @onclick="DeletePriceToDb">Удалить</button>
+				<button type="button" class="btn btn-secondary ms-2" @onclick="ClosePriceFormaCancelEdit">Отмена</button>
+			</div>
+		</div>
+	</EditForm>
+}
+else
+{
+	<h5 class="mb-0 ms-2">Выберите сроку для редактирования!</h5>
+}
+
+<hr />
+
+<button class="btn btn-success" @onclick="AddPriceToDb" disabled="@(PriceSelect != null ? true : null)">Добавить</button>
+
+<table class="table @(PriceSelect == null ? "table-hover" : null)">
+	<thead>
+		<tr>
+			<th>Период С</th>
+			<th>Период По</th>
+			<th>Поставщик</th>
+			<th>Фрукт</th>
+			<th>Цена, за Кг</th>
+		</tr>
+	</thead>
+	<tbody>
+		@if (ListPriceCatalog != null && ListPriceCatalog.Any())
+		{
+			foreach (var item in ListPriceCatalog)
+			{
+				<tr class="@(PriceSelect == item ? "table-secondary" : null)" @onclick="() => EditPriceOpenForma(item)"
+				    style="@(PriceSelect == null ? "cursor: pointer" : null)">
+					<td>@item.StartDate.ToString("d")</td>
+					<td>@item.EndDate.ToString("d")</td>
+					<td>@item.Provider.NameProvider</td>
+					<td>@item.Fruit.FullName</td>
+					<td>@item.Price.ToString("C")</td>
+				</tr>
+			}
+		}
+	</tbody>
+</table>
+
+@if (ListPriceCatalog == null)
+{
+	<div class="mt-3 mb-3 d-flex justify-content-center align-items-center">
+		<strong>Загрузка...</strong>
+		<div class="spinner-border ms-2" role="status" aria-hidden="true"></div>
+	</div>
+}
+
+@code {
+	private List<PriceCatalog>? ListPriceCatalog { get; set; }
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			await GetPriceData();
+		}
+	}
+
+	private async Task RefreshMe()
+	{
+		await InvokeAsync(StateHasChanged);
+	}
+
+	#region Get
+	private async Task GetPriceData()
+	{
+		var allProvidersCatalog = await FriutServices.GetAllProvidersCatalog();
+		ListProvidersCatalog = allProvidersCatalog.ToList();
+
+		var allFruitsCatalog = await FriutServices.GetAllFruitsCatalog();
+		ListFruitsCatalog = allFruitsCatalog.ToList();
+
+		var allPriceCatalog = await FriutServices.GetAllPriceCatalog();
+		ListPriceCatalog = allPriceCatalog.ToList();
+
+		await RefreshMe();
+	}
+	#endregion
+
+
+	#region Edit-Add
+	private List<ProvidersCatalog>? ListProvidersCatalog { get; set; }
+	private List<FruitsCatalog>? ListFruitsCatalog { get; set; }
+
+	private PriceCatalog? _priceSelect;
+	private PriceCatalog? PriceSelect
+	{
+		get => _priceSelect;
+		set
+		{
+			_priceSelect = value; 
+
+			if (_priceSelect != null)
+			{
+				_priceSelect.PropertyChanged += PriceSelectOnPropertyChanged;
+			}
+		}
+	}
+
+	private async void PriceSelectOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+	{
+		if (e.PropertyName == nameof(PriceCatalog.IdProviderCatalog))
+		{
+			if (PriceSelect != null && ListProvidersCatalog != null)
+			{
+				PriceSelect.Provider = ListProvidersCatalog.First(x => x.IdProviderCatalog == PriceSelect.IdProviderCatalog);
+			}
+
+			await RefreshMe();
+		}
+
+		if (e.PropertyName == nameof(PriceCatalog.IdFruitsCatalog))
+		{
+			if (PriceSelect != null && ListFruitsCatalog != null)
+			{
+				PriceSelect.Fruit = ListFruitsCatalog.First(x => x.IdFruitsCatalog == PriceSelect.IdFruitsCatalog);
+			}
+
+			await RefreshMe();
+		}
+	}
+
+	private async Task EditFormValid()
+	{
+		await UpdatePriceToDb();
+	}
+
+	private void EditPriceOpenForma(PriceCatalog price)
+	{
+		if (PriceSelect != null)
+		{
+			return;
+		}
+
+		PriceSelect = price;
+	}
+
+	private async Task ClosePriceFormaCancelEdit()
+	{
+		// Возвращаем без сохранения
+		if (PriceSelect != null)
+		{
+			await FriutServices.UndoChangesItemAsync(PriceSelect);
+		}
+
+		PriceSelect = null;
+
+		await GetPriceData();
+	}
+
+	private async Task AddPriceToDb()
+	{
+		PriceSelect = new PriceCatalog();
+		PriceSelect.StartDate = DateTime.Now.Date;
+		PriceSelect.EndDate = DateTime.Now.Date;
+		if (ListProvidersCatalog != null) PriceSelect.Provider = ListProvidersCatalog.First();
+		if (ListFruitsCatalog != null) PriceSelect.Fruit = ListFruitsCatalog.First();
+
+		await FriutServices.AddPriceCatalogAsync(PriceSelect);
+		if (await FriutServices.SaveChangesAsync())
+		{
+			await GetPriceData();
+		}
+	}
+
+	private async Task DeletePriceToDb()
+	{
+		if (PriceSelect != null)
+		{
+			await FriutServices.RemovePriceCatalogAsync(PriceSelect);
+			if (await FriutServices.SaveChangesAsync())
+			{
+				PriceSelect = null;
+
+				await GetPriceData();
+			}
+		}
+	}
+
+	private async Task UpdatePriceToDb()
+	{
+		if (PriceSelect != null)
+		{
+			if (await FriutServices.SaveChangesAsync())
+			{
+				PriceSelect = null;
+
+				await GetPriceData();
+			}
+		}
+	}
+	#endregion
+
+}

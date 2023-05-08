@@ -1,0 +1,305 @@
+﻿@page "/"
+@using Fruits.Interfaces
+@using Fruits.Domain.DB
+@using System.ComponentModel
+@inject IFriutServices FriutServices
+@inject IJSRuntime Js;
+
+<PageTitle>Главная</PageTitle>
+
+@*модальное окно добавить удалить*@
+<div class="modal fade" id="modalStock" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+
+			<div class="modal-header">
+				<h5 class="modal-title h4">@_formaTitle</h5>
+				<button type="button" class="btn btn-close" keydata-bs-dismiss="modal" aria-label="Close" 
+				        @onclick="CloseStockFormaCancelEdit"></button>
+			</div>
+
+			@if (StockSelect is not null)
+			{
+				<div class="modal-body">
+
+					<EditForm id="idEditFormStock" Model="StockSelect" OnValidSubmit="EditFormValid">
+						<DataAnnotationsValidator />
+						<ValidationSummary />
+
+						<div class="d-flex justify-content-start">
+							<div class="mb-2 me-2">
+								<label for="validation_stockSelect_DeliveryDate" class="form-label m-0 ms-2">Дата поставки</label>
+								<input id="validation_stockSelect_DeliveryDate" type="date" class="form-control col" @bind="StockSelect.DeliveryDate">
+							</div>
+						</div>
+
+						<div class="mb-2">
+							<label for="validation_stockSelect_IdProviderCatalog" class="form-label m-0 ms-2">Поставщик</label>
+							<select id="validation_stockSelect_IdProviderCatalog" class="form-select" @bind="StockSelect.IdProviderCatalog">
+								@if (ListProvidersCatalog != null)
+								{
+									foreach (var status in ListProvidersCatalog)
+									{
+										<option value="@status.IdProviderCatalog">@status.NameProvider</option>
+									}
+								}
+							</select>
+						</div>
+						
+					</EditForm>
+				</div>
+			}
+
+			<div class="modal-footer">
+
+				@if (_btnUpdateHide)
+				{
+					<button type="submit" form="idEditFormStock" class="btn btn-primary">Сохранить</button>
+				}
+				@if (_btnAddHide)
+				{
+					<button type="submit" form="idEditFormStock" class="btn btn-success">Добавить</button>
+				}
+				@if (_btnDeleteHide)
+				{
+					<button type="button" class="btn btn-danger" data-bs-dismiss="modal" @onclick="DeleteStockToDb">Удалить</button>
+				}
+
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="CloseStockFormaCancelEdit">Закрыть</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<h4 class="mb-0 ms-2">Поставки</h4>
+
+<table class="table table-hover">
+	<thead>
+	<tr>
+		<th>
+			<div class="d-flex justify-content-center">
+				<a @onclick="AddStockOpenForma" style="cursor: pointer"
+				   data-bs-toggle="modal" data-bs-target="#modalStock">
+					<span class="badge bg-warning">Добавить</span>
+				</a>
+			</div>
+		</th>
+		<th>Дата поставки</th>
+		<th>Поставщик</th>
+		<th>Вес, кг</th>
+		<th>Сумма</th>
+	</tr>
+	</thead>
+	<tbody>
+	@if (ListStocks != null && ListStocks.Any())
+	{
+		foreach (var item in ListStocks)
+		{
+			<tr class="@(StockSelect == item ? "table-secondary" : null)" @onclick="() => GetStockFruitsData(item)" style="cursor: pointer">
+				<td class="col-1">
+					<div class="d-flex justify-content-center">
+						<button @onclick="() => EditStockOpenForma(item)" class="btn btn-sm btn-outline-success p-0 px-1"
+					        data-bs-toggle="modal" data-bs-target="#modalStock" type="button">
+							<span>Правка</span>
+						</button>
+					</div>
+				</td>
+				<td>@item.DeliveryDate.ToString("d")</td>
+				<td>@item.Provider.NameProvider</td>
+				<td>@item.MassSumm</td>
+				<td>@item.PriceSumm.ToString("C")</td>
+			</tr>
+		}
+	}
+	</tbody>
+</table>
+@if (ListStocks == null)
+{
+	<div class="mt-3 mb-3 d-flex justify-content-center align-items-center">
+		<strong>Загрузка...</strong>
+		<div class="spinner-border ms-2" role="status" aria-hidden="true"></div>
+	</div>
+}
+
+<hr style="border-width: 5px; border-color: crimson; opacity: 1" />
+
+<PartialStockFruits @ref="_refPartialStockFruits" EventCallbackDataChange="EventCallbackDataChange" />
+
+@code{
+	private PartialStockFruits? _refPartialStockFruits;
+
+	private List<Stock>? ListStocks { get; set; }
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			await GetStockData();
+		}
+	}
+
+	private async void EventCallbackDataChange()
+	{
+		await GetStockData();
+	}
+
+	private async Task RefreshMe()
+	{
+		await InvokeAsync(StateHasChanged);
+	}
+
+
+	#region Get
+	private async Task GetStockData()
+	{
+		var allProvidersCatalog = await FriutServices.GetAllProvidersCatalog();
+		ListProvidersCatalog = allProvidersCatalog.ToList();
+
+		await FriutServices.GetAllStockFruits();
+
+		var allStock = await FriutServices.GetAllStock();
+		ListStocks = allStock.ToList();
+
+		if (StockSelect != null)
+		{
+			await GetStockFruitsData(StockSelect);
+		}
+
+		await RefreshMe();
+	}
+
+	private async Task GetStockFruitsData(Stock? value)
+	{
+		StockSelect = value;
+
+		if (_refPartialStockFruits != null)
+		{
+			await _refPartialStockFruits.GetStockFruitsData(value);
+		}
+	}
+	#endregion
+
+	#region Edit-Add
+	private List<ProvidersCatalog>? ListProvidersCatalog { get; set; }
+	
+	private string? _formaTitle;
+	private bool _btnDeleteHide = true;
+	private bool _btnAddHide = true;
+	private bool _btnUpdateHide = true;
+
+	private Stock? _stockSelect;
+	private Stock? StockSelect
+	{
+		get => _stockSelect;
+		set
+		{
+			_stockSelect = value; 
+
+			if (_stockSelect != null)
+			{
+				_stockSelect.PropertyChanged += StockSelectOnPropertyChanged;
+			}
+		}
+	}
+
+	private async void StockSelectOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+	{
+		if (e.PropertyName == nameof(Stock.IdProviderCatalog))
+		{
+			if (StockSelect != null && ListProvidersCatalog != null)
+			{
+				StockSelect.Provider = ListProvidersCatalog.First(x => x.IdProviderCatalog == StockSelect.IdProviderCatalog);
+			}
+
+			await RefreshMe();
+		}
+	}
+
+	private void AddStockOpenForma()
+	{
+		var add = new Stock();
+		add.DeliveryDate = DateTime.Now;
+		StockSelect = add;
+
+		_btnAddHide = true;
+		_btnDeleteHide = false;
+		_btnUpdateHide = false;
+		_formaTitle = "Добавить новую поставку";
+	}
+
+	private void EditStockOpenForma(Stock stock)
+	{
+		_btnAddHide = false;
+		_btnDeleteHide = true;
+		_btnUpdateHide = true;
+		_formaTitle = "Карточка поставки";
+
+		StockSelect = stock;
+	}
+
+	private async Task CloseStockFormaCancelEdit()
+	{
+		await Js.InvokeVoidAsync("closeModal", "modalStock");
+
+		// Возвращаем без сохранения
+		if (StockSelect != null)
+		{
+			await FriutServices.UndoChangesItemAsync(StockSelect);
+		}
+
+		await GetStockData();
+	}
+
+	private async Task EditFormValid()
+	{
+		if (!_btnUpdateHide)
+		{
+			await AddStockToDb();
+		}
+		if (!_btnAddHide)
+		{
+			await UpdateStockToDb();
+		}
+
+		await Js.InvokeVoidAsync("closeModal", "modalStock");
+	}
+
+	private async Task AddStockToDb()
+	{
+		if (StockSelect != null)
+		{
+			await FriutServices.AddStockAsync(StockSelect);
+			if (await FriutServices.SaveChangesAsync())
+			{
+				await GetStockData();
+			}
+		}
+	}
+
+	private async Task DeleteStockToDb()
+	{
+		if (StockSelect != null)
+		{
+			await FriutServices.RemoveStockAsync(StockSelect);
+			if (await FriutServices.SaveChangesAsync())
+			{
+				await GetStockFruitsData(null);
+				await GetStockData();
+			}
+		}
+	}
+
+	private async Task UpdateStockToDb()
+	{
+		if (StockSelect != null)
+		{
+			FriutServices.UpdateStock(StockSelect);
+			if (await FriutServices.SaveChangesAsync())
+			{
+				await GetStockData();
+			}
+		}
+	}
+	#endregion
+
+}

@@ -1,0 +1,31 @@
+﻿@page
+@model BlazorApp1.Pages.ErrorModel
+
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	<title>Error</title>
+	<link href="~/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+	<link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
+</head>
+
+<body>
+<div class="main">
+	<div class="content px-4">
+		<h1 class="text-danger">Ошибка.</h1>
+		<h2 class="text-danger">Во время обработки Вашего запроса произошла ошибка.</h2>
+
+		@if (Model.ShowRequestId)
+		{
+			<p>
+				<strong>Запрос ID:</strong> <code>@Model.RequestId</code>
+			</p>
+		}
+	</div>
+</div>
+</body>
+
+</html>
